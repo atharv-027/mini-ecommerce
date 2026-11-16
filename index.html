@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>Login - Mini E-Commerce</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-page">
+  <div style="text-align: right; padding: 16px 20px;">
+    <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+  </div>
+
+  <div class="auth-shell">
+    <div class="glass auth-card">
+      <div class="brand-mark">
+        <span class="brand-dot"></span> E-Shop
+      </div>
+
+      <div class="role-tabs">
+        <button type="button" class="tab-btn active" onclick="switchRole('user', this)">User</button>
+        <button type="button" class="tab-btn" onclick="switchRole('dealer', this)">Dealer</button>
+      </div>
+
+      <h2 id="auth-title" style="text-align:center; margin-bottom: 4px;">User Sign In</h2>
+      <p id="auth-subtitle" style="text-align:center; color: var(--text-muted); font-size: 13px; margin-bottom: 22px;">
+        Welcome back — log in to continue.
+      </p>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="Enter password">
+        </div>
+        <button type="submit" class="btn-primary">Login</button>
+      </form>
+
+      <!-- SIGN UP FORM -->
+      <form id="signupForm" onsubmit="handleSignup(event)" style="display:none;">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input type="text" id="signup-name" required placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" required placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" required placeholder="At least 8 characters" minlength="8">
+        </div>
+        <div class="form-group">
+          <label for="signup-confirm">Confirm Password</label>
+          <input type="password" id="signup-confirm" required placeholder="Re-enter password">
+        </div>
+
+        <!-- DEALER-ONLY FIELDS - shown only when signing up as a Dealer -->
+        <div id="dealerSignupFields" style="display:none;">
+          <hr style="margin: 16px 0; border-color: var(--border-color);">
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Tell us a bit about your shop.</p>
+          <div class="form-group">
+            <label for="signup-shop-name">Shop Name</label>
+            <input type="text" id="signup-shop-name" placeholder="e.g. Rahul Electronics">
+          </div>
+          <div class="form-group">
+            <label for="signup-shop-address">Shop Address</label>
+            <input type="text" id="signup-shop-address" placeholder="e.g. Shop No. 4, MG Road, Pune">
+          </div>
+          <div class="form-group">
+            <label for="signup-shop-phone">Shop Contact Number</label>
+            <input type="tel" id="signup-shop-phone" pattern="[0-9]{10}" placeholder="10-digit phone number">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-secondary">Create Account</button>
+      </form>
+
+      <p style="text-align:center; margin-top: 20px; font-size: 14px; color: var(--text-muted);">
+        <span id="toggle-login-msg">New here? <a href="#" onclick="toggleMode('signup'); return false;">Sign Up</a></span>
+        <span id="toggle-signup-msg" style="display:none;">Already have an account? <a href="#" onclick="toggleMode('login'); return false;">Login</a></span>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/localdb.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

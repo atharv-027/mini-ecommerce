@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>About Us - Mini E-Commerce</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2>E-Shop</h2>
+    <div>
+      <a href="store.html">Products</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQ</a>
+      <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>About Mini E-Commerce</h2>
+    <p style="line-height:1.8; color:var(--text-color);">
+      Mini E-Commerce is a DBMS course project built to demonstrate a working
+      relational database behind a real online shopping flow — user and
+      dealer accounts, product listings, a shopping cart, order checkout,
+      order status tracking, wishlists, and buyer–seller messaging.
+    </p>
+    <p style="line-height:1.8; color:var(--text-color);">
+      Every action on this site — logging in, publishing a product, placing
+      an order, saving to a wishlist, sending a chat message — is stored in
+      and read back from a SQL database on the backend, not just in the
+      browser. That's what lets two different people, on two different
+      devices, see the same live data.
+    </p>
+
+    <h3 style="margin-top:28px;">How it works</h3>
+    <ul style="line-height:2; color:var(--text-color);">
+      <li><strong>Users</strong> browse products, add them to cart, checkout, track orders, save wishlists, and message dealers.</li>
+      <li><strong>Dealers</strong> publish and manage their own product listings and update order status as items are packed and shipped.</li>
+      <li>All data lives in a single shared SQLite database, accessed through a REST API.</li>
+    </ul>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/localdb.js"></script>
+</body>
+</html>

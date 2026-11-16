@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>FAQ - Mini E-Commerce</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2>E-Shop</h2>
+    <div>
+      <a href="store.html">Products</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQ</a>
+      <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <span>How do I become a dealer?</span><span>+</span>
+      </div>
+      <div class="faq-answer">Click "Dealer Login" on the login page and sign in with any email/password — a dealer account is created automatically the first time.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <span>How does checkout work?</span><span>+</span>
+      </div>
+      <div class="faq-answer">Add items to your cart, go to the Cart page, fill in your delivery details, and confirm. This creates a real order in the database that the dealer(s) can see and fulfill.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <span>Can I track my order status?</span><span>+</span>
+      </div>
+      <div class="faq-answer">Yes — visit "My Orders" any time. Dealers update the status (Order Placed → Packed → Shipped → Out for Delivery → Delivered) from their dashboard, and you'll see it reflected there.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <span>How do I contact a seller?</span><span>+</span>
+      </div>
+      <div class="faq-answer">Open any product's details page and click "Message Seller" to start a live chat.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <span>Is my data saved permanently?</span><span>+</span>
+      </div>
+      <div class="faq-answer">Yes — accounts, products, orders, wishlists, and messages are all stored in a shared SQL database on the backend, not just in your browser.</div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/localdb.js"></script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>Product Details - Mini E-Commerce</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2>E-Shop</h2>
+    <div>
+      <a href="store.html">Products</a>
+      <a href="cart.html">Cart (<span id="cartCount">0</span>)</a>
+      <a href="wishlist.html">Wishlist</a>
+      <a href="messages.html">Messages</a>
+      <a href="orders.html">My Orders</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" onclick="logout()">Logout</a>
+      <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+
+  <div class="container" id="product-container" style="max-width: 900px;">
+    <p class="empty-state">Loading product...</p>
+  </div>  <div style="text-align:center; padding:24px 20px; color:var(--text-muted); font-size:13px; border-top:1px solid var(--border-color); margin-top:20px;">
+    <a href="about.html" style="color:var(--text-muted); margin:0 8px;">About</a> |
+    <a href="contact.html" style="color:var(--text-muted); margin:0 8px;">Contact</a> |
+    <a href="faq.html" style="color:var(--text-muted); margin:0 8px;">FAQ</a>
+  </div>
+
+
+
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/localdb.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    let currentProduct = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const session = verifyAccess('user');
+      if (!session) return;
+
+      updateCartCountLocal();
+
+      const params = new URLSearchParams(window.location.search);
+      const productId = params.get('id');
+      const container = document.getElementById('product-container');
+
+      if (!productId) {
+        container.innerHTML = '<p class="empty-state">No product specified.</p>';
+        return;
+      }
+
+      try {
+        let product, wishlist;
+        try {
+          const [productRes, wishlistRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/products/${productId}`),
+            fetch(`${API_BASE_URL}/api/wishlist/${encodeURIComponent(session.email)}`)
+          ]);
+          if (!productRes.ok) { container.innerHTML = '<p class="empty-state">Product not found.</p>'; return; }
+          product = await productRes.json();
+          wishlist = wishlistRes.ok ? await wishlistRes.json() : [];
+        } catch (networkErr) {
+          product = ldbGetProduct(productId);
+          wishlist = ldbGetWishlist(session.email);
+        }
+
+        currentProduct = product;
+        const isWishlisted = wishlist.some(p => String(p.id) === String(currentProduct.id));
+
+        container.innerHTML = `
+          <div style="display:flex; gap:32px; flex-wrap:wrap;">
+            <div style="flex: 1; min-width:260px; text-align:center;">
+              <img src="${currentProduct.image}" alt="${currentProduct.title}" style="max-width:100%; max-height:320px; object-fit:contain;">
+            </div>
+            <div style="flex: 1.4; min-width:280px;">
+              <span style="color:var(--text-muted); font-size:13px;">${currentProduct.category || 'Other'}</span>
+              <h2 style="margin:6px 0;">${currentProduct.title}</h2>
+              <p style="color:var(--primary-color); font-size:13px; margin-bottom:10px;">Sold by: ${currentProduct.dealerName || currentProduct.dealerEmail}</p>
+              <p style="font-size:26px; font-weight:bold; color:var(--success-color); margin-bottom:16px;">$${Number(currentProduct.price).toFixed(2)}</p>
+              <p style="color:var(--text-color); line-height:1.7; margin-bottom:24px;">${currentProduct.description || 'No description provided.'}</p>
+
+              <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="btn-secondary" style="flex:1; min-width:160px;" onclick="addToCartHere()">Add to Cart</button>
+                <button class="btn-outline" id="wishlist-btn" style="flex:1; min-width:160px;" onclick="toggleWishlistHere()">${isWishlisted ? '♥ In Wishlist' : '♡ Save to Wishlist'}</button>
+              </div>
+              <button class="btn-primary" style="margin-top:12px;" onclick="messageSellerHere()">Message Seller</button>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        container.innerHTML = '<p class="empty-state">Could not load this product.</p>';
+      }
+    });
+
+    function updateCartCountLocal() {
+      const cart = JSON.parse(localStorage.getItem('userCart') || '[]');
+      const counter = document.getElementById('cartCount');
+      if (counter) counter.innerText = cart.length;
+    }
+
+    function addToCartHere() {
+      if (!currentProduct) return;
+      const cart = JSON.parse(localStorage.getItem('userCart') || '[]');
+      cart.push(currentProduct);
+      localStorage.setItem('userCart', JSON.stringify(cart));
+      updateCartCountLocal();
+      alert(`${currentProduct.title} added to cart.`);
+    }
+
+    async function toggleWishlistHere() {
+      const session = JSON.parse(localStorage.getItem('userSession'));
+      const btn = document.getElementById('wishlist-btn');
+      const isActive = btn.textContent.includes('In Wishlist');
+
+      try {
+        if (isActive) {
+          try {
+            await fetch(`${API_BASE_URL}/api/wishlist/${encodeURIComponent(session.email)}/${currentProduct.id}`, { method: 'DELETE' });
+          } catch (networkErr) {
+            ldbRemoveWishlist(session.email, currentProduct.id);
+          }
+          btn.textContent = '♡ Save to Wishlist';
+        } else {
+          try {
+            await fetch(`${API_BASE_URL}/api/wishlist`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: session.email, productId: currentProduct.id })
+            });
+          } catch (networkErr) {
+            ldbAddWishlist(session.email, currentProduct.id);
+          }
+          btn.textContent = '♥ In Wishlist';
+        }
+      } catch (error) {
+        alert('Could not update wishlist.');
+      }
+    }
+
+    async function messageSellerHere() {
+      const session = JSON.parse(localStorage.getItem('userSession'));
+      if (session.email === currentProduct.dealerEmail) {
+        alert("You can't message yourself about your own product.");
+        return;
+      }
+
+      try {
+        let conv;
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              participants: [session.email, currentProduct.dealerEmail],
+              title: currentProduct.title,
+              productId: currentProduct.id
+            })
+          });
+          conv = await response.json();
+        } catch (networkErr) {
+          conv = ldbCreateConversation({
+            participants: [session.email, currentProduct.dealerEmail],
+            title: currentProduct.title,
+            productId: currentProduct.id
+          });
+        }
+        window.location.href = `messages.html?conv=${conv.id}`;
+      } catch (error) {
+        alert('Could not start conversation. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

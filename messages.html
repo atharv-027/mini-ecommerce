@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>Messages - Mini E-Commerce</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2 id="nav-title">E-Shop</h2>
+    <div id="nav-links"></div>
+  </div>
+
+  <div class="container" style="max-width: 900px; padding: 0; overflow: hidden;">
+    <div class="chat-layout">
+      <div class="conv-list" id="convList">
+        <p class="empty-state">Loading conversations...</p>
+      </div>
+      <div class="chat-window">
+        <div id="chat-empty" class="empty-state">Select a conversation to start chatting.</div>
+        <div id="chat-active" style="display:none; flex-direction:column; flex:1;">
+          <h3 id="chat-title" style="margin-top:0;"></h3>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Type a message...">
+            <button class="btn-primary" style="width:auto; padding:10px 20px;" onclick="sendChatMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>  <div style="text-align:center; padding:24px 20px; color:var(--text-muted); font-size:13px; border-top:1px solid var(--border-color); margin-top:20px;">
+    <a href="about.html" style="color:var(--text-muted); margin:0 8px;">About</a> |
+    <a href="contact.html" style="color:var(--text-muted); margin:0 8px;">Contact</a> |
+    <a href="faq.html" style="color:var(--text-muted); margin:0 8px;">FAQ</a>
+  </div>
+
+
+
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/localdb.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <script>
+    let session = null;
+    let socket = null;
+    let activeConvId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      session = requireAnySession();
+      if (!session) return;
+
+      buildNavbar();
+      socket = io(API_BASE_URL);
+
+      socket.on('receive_message', (msg) => {
+        if (msg.convId === activeConvId) {
+          appendMessage(msg);
+        }
+      });
+
+      await loadConversations();
+
+      const params = new URLSearchParams(window.location.search);
+      const preselect = params.get('conv');
+      if (preselect) openConversation(preselect);
+
+      document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+      });
+    });
+
+    function buildNavbar() {
+      document.getElementById('nav-title').textContent = session.role === 'dealer' ? 'Dealer Dashboard' : 'E-Shop';
+      const links = session.role === 'dealer'
+        ? [['sell-product.html', 'Add & Manage Products'], ['dealer-orders.html', 'Customer Orders'], ['messages.html', 'Messages'], ['profile.html', 'Profile']]
+        : [['store.html', 'Products'], ['cart.html', 'Cart'], ['wishlist.html', 'Wishlist'], ['messages.html', 'Messages'], ['orders.html', 'My Orders'], ['profile.html', 'Profile']];
+
+      const container = document.getElementById('nav-links');
+      container.innerHTML = links.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')
+        + `<a href="#" onclick="logout()">Logout</a>`
+        + `<button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>`;
+
+      // theme.js already ran on DOMContentLoaded before this button existed, wire it up now
+      const btn = document.getElementById('theme-toggle');
+      btn.textContent = (document.documentElement.getAttribute('data-theme') === 'dark') ? '☀️' : '🌙';
+      btn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        btn.textContent = next === 'dark' ? '☀️' : '🌙';
+      });
+    }
+
+    async function loadConversations() {
+      const listEl = document.getElementById('convList');
+      let convs;
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/conversations/${encodeURIComponent(session.email)}`);
+        convs = await response.json();
+      } catch (networkErr) {
+        convs = ldbGetConversations(session.email);
+      }
+
+      if (!convs.length) {
+        listEl.innerHTML = '<p class="empty-state">No conversations yet.</p>';
+        return;
+      }
+
+      listEl.innerHTML = convs.map(c => {
+        const other = c.participants.find(p => p !== session.email) || 'Unknown';
+        return `<div class="conv-item" data-id="${c.id}" onclick="openConversation('${c.id}')">
+          <strong>${c.title || 'Conversation'}</strong><br>
+          <small style="color:var(--text-muted);">with ${other}</small>
+        </div>`;
+      }).join('');
+    }
+
+    async function openConversation(convId) {
+      activeConvId = convId;
+      document.querySelectorAll('.conv-item').forEach(el => el.classList.toggle('active', el.dataset.id === convId));
+
+      document.getElementById('chat-empty').style.display = 'none';
+      document.getElementById('chat-active').style.display = 'flex';
+
+      const titleEl = document.querySelector(`.conv-item[data-id="${convId}"] strong`);
+      document.getElementById('chat-title').textContent = titleEl ? titleEl.textContent : 'Conversation';
+
+      socket.emit('join_conversation', convId);
+
+      const messagesEl = document.getElementById('chatMessages');
+      messagesEl.innerHTML = '<p class="empty-state">Loading messages...</p>';
+
+      let messages;
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`);
+        messages = await response.json();
+      } catch (networkErr) {
+        messages = ldbGetMessages(convId);
+      }
+      messagesEl.innerHTML = '';
+      messages.forEach(appendMessage);
+    }
+
+    function appendMessage(msg) {
+      const messagesEl = document.getElementById('chatMessages');
+      if (messagesEl.querySelector('.empty-state')) messagesEl.innerHTML = '';
+
+      const mine = msg.sender === session.email;
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble ${mine ? 'mine' : 'theirs'}`;
+      bubble.innerHTML = `${msg.text}<div style="font-size:10px; opacity:0.7; margin-top:4px;">${msg.time}</div>`;
+      messagesEl.appendChild(bubble);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text || !activeConvId) return;
+
+      if (socket && socket.connected) {
+        socket.emit('send_message', { conversationId: activeConvId, sender: session.email, text });
+      } else {
+        // Backend/socket not reachable — store locally and show it immediately.
+        // Note: without a server, the other person won't see this in real time;
+        // it'll be there next time they load the conversation on this browser.
+        const msg = ldbSendMessage({ convId: activeConvId, sender: session.email, text });
+        appendMessage(msg);
+      }
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
